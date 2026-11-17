@@ -1,0 +1,98 @@
+
+module fifo_sync
+#(
+    parameter FIFO_DEPTH = 8,
+    parameter DATA_WIDTH = 32
+)
+(
+    input clk,
+    input rst_n,
+    input cs,
+    input wr_en,
+    input rd_en,
+    input [DATA_WIDTH-1:0] data_in,
+
+    output reg [DATA_WIDTH-1:0] data_out,
+
+    output empty,
+    output full,
+    output almost_empty,
+    output almost_full
+);
+
+  
+    localparam PTR_WIDTH = $clog2(FIFO_DEPTH);
+
+    // FIFO memory
+    reg [DATA_WIDTH-1:0] fifo [0:FIFO_DEPTH-1];
+
+    // Read and write pointers
+    reg [PTR_WIDTH:0] write_pointer;
+    reg [PTR_WIDTH:0] read_pointer;
+
+    // Number of stored elements
+    reg [PTR_WIDTH:0] count;
+
+
+    // WRITE OPERATION
+    always @(posedge clk or negedge rst_n)
+    begin
+        if (!rst_n)
+            write_pointer <= 0;
+
+        else if (cs && wr_en && !full) begin
+
+            fifo[write_pointer[PTR_WIDTH-1:0]] <= data_in;
+
+            write_pointer <= write_pointer + 1'b1;
+        end
+    end
+
+
+    // READ OPERATION
+    always @(posedge clk or negedge rst_n)
+    begin
+        if (!rst_n) begin
+            read_pointer <= 0;
+            data_out <= 0;
+        end
+
+        else if (cs && rd_en && !empty) begin
+
+            data_out <= fifo[read_pointer[PTR_WIDTH-1:0]];
+
+            read_pointer <= read_pointer + 1'b1;
+        end
+    end
+
+
+    // OCCUPANCY COUNTER
+    always @(posedge clk or negedge rst_n)
+    begin
+        if (!rst_n)
+            count <= 0;
+
+        else begin
+            case ({cs && wr_en && !full,
+                   cs && rd_en && !empty})
+
+                2'b10: count <= count + 1'b1;
+
+                2'b01: count <= count - 1'b1;
+
+                default: count <= count;
+            endcase
+        end
+    end
+
+
+    // FIFO STATUS FLAGS
+    assign empty = (count == 0);
+
+    assign full = (count == FIFO_DEPTH);
+
+    assign almost_empty = (count <= 1);
+
+    assign almost_full = (count >= FIFO_DEPTH-2);
+
+endmodule
