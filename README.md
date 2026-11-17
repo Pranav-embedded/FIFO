@@ -26,7 +26,7 @@ A parameterized **Synchronous FIFO** designed using Verilog HDL and simulated in
 
 The waveform shows FIFO write, read, fill and drain operations along with status flag transitions.
 
-![FIFO Simulation Waveform](Screenshot 2026-11-17 232138.png)
+![FIFO Simulation Waveform]([Screenshot 2026-11-17 232138.png](https://github.com/Pranav-embedded/FIFO/blob/main/Screenshot%202026-11-17%20232138.png))
 
 ## Tools Used
 
