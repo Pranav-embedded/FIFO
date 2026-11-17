@@ -1,0 +1,132 @@
+`timescale 1ns/1ns
+
+module tb_fifo_sync();
+
+    // FIFO parameters
+    parameter FIFO_DEPTH = 8;
+    parameter DATA_WIDTH = 32;
+
+    // Testbench signals
+    reg clk = 0;
+    reg rst_n;
+    reg cs;
+    reg wr_en, rd_en;
+    reg [DATA_WIDTH-1:0] data_in;
+
+    wire [DATA_WIDTH-1:0] data_out;
+    wire empty, full;
+    wire almost_full, almost_empty;
+
+    integer i;
+
+    // Connect testbench to FIFO
+    fifo_sync #(
+        .FIFO_DEPTH(FIFO_DEPTH),
+        .DATA_WIDTH(DATA_WIDTH)
+    ) dut (
+        .clk(clk),
+        .rst_n(rst_n),
+        .cs(cs),
+        .wr_en(wr_en),
+        .rd_en(rd_en),
+        .data_in(data_in),
+        .data_out(data_out),
+        .empty(empty),
+        .full(full),
+        .almost_full(almost_full),
+        .almost_empty(almost_empty)
+    );
+
+    // Clock generation
+    always #5 clk = ~clk;
+
+
+    // Write task
+    task write_data(input [DATA_WIDTH-1:0] data);
+    begin
+        @(negedge clk);
+
+        cs = 1;
+        wr_en = 1;
+        rd_en = 0;
+        data_in = data;
+
+        @(posedge clk);
+        #1;
+
+        $display("WRITE: Data = %0d", data_in);
+        $display("Full=%b Empty=%b Almost_Full=%b Almost_Empty=%b",
+                  full, empty, almost_full, almost_empty);
+    end
+    endtask
+
+
+    // Read task
+    task read_data;
+    begin
+        @(negedge clk);
+
+        cs = 1;
+        rd_en = 1;
+        wr_en = 0;
+
+        @(posedge clk);
+        #1;
+
+        $display("READ: Data = %0d", data_out);
+        $display("Full=%b Empty=%b Almost_Full=%b Almost_Empty=%b",
+                  full, empty, almost_full, almost_empty);
+    end
+    endtask
+
+
+    // Main test
+    initial begin
+
+        // Initial values
+        rst_n = 0;
+        cs = 0;
+        wr_en = 0;
+        rd_en = 0;
+        data_in = 0;
+
+        // Reset
+        repeat(2) @(posedge clk);
+        @(negedge clk);
+        rst_n = 1;
+
+        $display("\n--- SCENARIO 1: Basic Write and Read ---");
+
+        write_data(10);
+        write_data(55);
+
+        read_data();
+        read_data();
+
+
+        $display("\n--- SCENARIO 2: Check Almost Full ---");
+
+        for(i = 0; i < FIFO_DEPTH; i = i + 1)
+            write_data(i + 1);
+
+
+        $display("\n--- SCENARIO 3: Read All Data ---");
+
+        for(i = 0; i < FIFO_DEPTH; i = i + 1)
+            read_data();
+
+
+        $display("\n--- TEST COMPLETED ---");
+
+        #20;
+        $finish;
+    end
+
+
+    // Waveform generation
+    initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(0, tb_fifo_sync);
+    end
+
+endmodule
